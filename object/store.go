@@ -17,6 +17,7 @@ package object
 import (
 	"fmt"
 	"time"
+	"log"
 
 	"github.com/casibase/casibase/i18n"
 	"github.com/casibase/casibase/storage"
@@ -312,6 +313,10 @@ func RefreshStoreVectors(store *Store, lang string) (bool, error) {
 	}
 
 	ok, err := addVectorsForStore(storageProviderObj, embeddingProviderObj, "", store.Name, store.SplitProvider, embeddingProvider.Name, modelProvider.SubType, lang)
+	if err != nil {
+		log.Printf("[ERROR] Failed to addVectorsForStore: %v", err)
+		return true, nil
+	}
 	return ok, err
 }
 

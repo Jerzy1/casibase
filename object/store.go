@@ -16,6 +16,7 @@ package object
 
 import (
 	"fmt"
+	"strings"
 	"time"
 	"log"
 
@@ -25,16 +26,16 @@ import (
 	"xorm.io/core"
 )
 
-type File struct {
-	Key         string  `xorm:"varchar(100)" json:"key"`
-	Title       string  `xorm:"varchar(100)" json:"title"`
-	Size        int64   `json:"size"`
-	CreatedTime string  `xorm:"varchar(100)" json:"createdTime"`
-	IsLeaf      bool    `json:"isLeaf"`
-	Url         string  `xorm:"varchar(255)" json:"url"`
-	Children    []*File `xorm:"varchar(1000)" json:"children"`
+type TreeFile struct {
+	Key         string      `xorm:"varchar(100)" json:"key"`
+	Title       string      `xorm:"varchar(100)" json:"title"`
+	Size        int64       `json:"size"`
+	CreatedTime string      `xorm:"varchar(100)" json:"createdTime"`
+	IsLeaf      bool        `json:"isLeaf"`
+	Url         string      `xorm:"varchar(255)" json:"url"`
+	Children    []*TreeFile `xorm:"varchar(1000)" json:"children"`
 
-	ChildrenMap map[string]*File `xorm:"-" json:"-"`
+	ChildrenMap map[string]*TreeFile `xorm:"-" json:"-"`
 }
 
 type Properties struct {
@@ -60,18 +61,19 @@ type Store struct {
 	CreatedTime string `xorm:"varchar(100)" json:"createdTime"`
 	DisplayName string `xorm:"varchar(100)" json:"displayName"`
 
-	StorageProvider      string `xorm:"varchar(100)" json:"storageProvider"`
-	StorageSubpath       string `xorm:"varchar(100)" json:"storageSubpath"`
-	ImageProvider        string `xorm:"varchar(100)" json:"imageProvider"`
-	SplitProvider        string `xorm:"varchar(100)" json:"splitProvider"`
-	SearchProvider       string `xorm:"varchar(100)" json:"searchProvider"`
-	ModelProvider        string `xorm:"varchar(100)" json:"modelProvider"`
-	EmbeddingProvider    string `xorm:"varchar(100)" json:"embeddingProvider"`
-	TextToSpeechProvider string `xorm:"varchar(100)" json:"textToSpeechProvider"`
-	EnableTtsStreaming   bool   `xorm:"bool" json:"enableTtsStreaming"`
-	SpeechToTextProvider string `xorm:"varchar(100)" json:"speechToTextProvider"`
-	AgentProvider        string `xorm:"varchar(100)" json:"agentProvider"`
-	VectorStoreId        string `xorm:"varchar(100)" json:"vectorStoreId"`
+	StorageProvider      string   `xorm:"varchar(100)" json:"storageProvider"`
+	StorageSubpath       string   `xorm:"varchar(100)" json:"storageSubpath"`
+	ImageProvider        string   `xorm:"varchar(100)" json:"imageProvider"`
+	SplitProvider        string   `xorm:"varchar(100)" json:"splitProvider"`
+	SearchProvider       string   `xorm:"varchar(100)" json:"searchProvider"`
+	ModelProvider        string   `xorm:"varchar(100)" json:"modelProvider"`
+	EmbeddingProvider    string   `xorm:"varchar(100)" json:"embeddingProvider"`
+	TextToSpeechProvider string   `xorm:"varchar(100)" json:"textToSpeechProvider"`
+	EnableTtsStreaming   bool     `xorm:"bool" json:"enableTtsStreaming"`
+	SpeechToTextProvider string   `xorm:"varchar(100)" json:"speechToTextProvider"`
+	AgentProvider        string   `xorm:"varchar(100)" json:"agentProvider"`
+	VectorStoreId        string   `xorm:"varchar(100)" json:"vectorStoreId"`
+	BuiltinTools         []string `xorm:"varchar(500)" json:"builtinTools"`
 
 	MemoryLimit         int      `json:"memoryLimit"`
 	Frequency           int      `json:"frequency"`
@@ -94,6 +96,7 @@ type Store struct {
 	VectorStores        []string `xorm:"varchar(500)" json:"vectorStores"`
 	ChildStores         []string `xorm:"varchar(500)" json:"childStores"`
 	ChildModelProviders []string `xorm:"varchar(500)" json:"childModelProviders"`
+	ForbiddenWords      []string `xorm:"text" json:"forbiddenWords"`
 	ShowAutoRead        bool     `json:"showAutoRead"`
 	DisableFileUpload   bool     `json:"disableFileUpload"`
 	HideThinking        bool     `json:"hideThinking"`
@@ -103,7 +106,7 @@ type Store struct {
 	ChatCount    int `xorm:"-" json:"chatCount"`
 	MessageCount int `xorm:"-" json:"messageCount"`
 
-	FileTree      *File                  `xorm:"mediumtext" json:"fileTree"`
+	FileTree      *TreeFile              `xorm:"mediumtext" json:"fileTree"`
 	PropertiesMap map[string]*Properties `xorm:"mediumtext" json:"propertiesMap"`
 }
 
@@ -365,4 +368,22 @@ func GetPaginationStores(offset, limit int, name, field, value, sortField, sortO
 	}
 
 	return stores, nil
+}
+
+func (store *Store) ContainsForbiddenWords(text string) (bool, string) {
+	if store.ForbiddenWords == nil || len(store.ForbiddenWords) == 0 {
+		return false, ""
+	}
+
+	lowerText := strings.ToLower(text)
+	for _, forbiddenWord := range store.ForbiddenWords {
+		if forbiddenWord == "" {
+			continue
+		}
+		lowerForbiddenWord := strings.ToLower(forbiddenWord)
+		if strings.Contains(lowerText, lowerForbiddenWord) {
+			return true, forbiddenWord
+		}
+	}
+	return false, ""
 }

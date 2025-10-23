@@ -14,8 +14,8 @@
 
 import * as Setting from "../Setting";
 
-export function getGlobalFiles(page = "", pageSize = "", field = "", value = "", sortField = "", sortOrder = "") {
-  return fetch(`${Setting.ServerUrl}/api/get-global-files?p=${page}&pageSize=${pageSize}&field=${field}&value=${value}&sortField=${sortField}&sortOrder=${sortOrder}`, {
+export function getAssets(owner, page = "", pageSize = "", field = "", value = "", sortField = "", sortOrder = "") {
+  return fetch(`${Setting.ServerUrl}/api/get-assets?owner=${owner}&p=${page}&pageSize=${pageSize}&field=${field}&value=${value}&sortField=${sortField}&sortOrder=${sortOrder}`, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -24,8 +24,8 @@ export function getGlobalFiles(page = "", pageSize = "", field = "", value = "",
   }).then(res => res.json());
 }
 
-export function getFiles(owner, store = "") {
-  return fetch(`${Setting.ServerUrl}/api/get-files?owner=${owner}&store=${store}`, {
+export function getAsset(owner, name) {
+  return fetch(`${Setting.ServerUrl}/api/get-asset?id=${owner}/${encodeURIComponent(name)}`, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -34,48 +34,48 @@ export function getFiles(owner, store = "") {
   }).then(res => res.json());
 }
 
-export function getFile(owner, name) {
-  return fetch(`${Setting.ServerUrl}/api/get-file?id=${owner}/${encodeURIComponent(name)}`, {
-    method: "GET",
+export function updateAsset(owner, name, asset) {
+  const newAsset = Setting.deepCopy(asset);
+  return fetch(`${Setting.ServerUrl}/api/update-asset?id=${owner}/${encodeURIComponent(name)}`, {
+    method: "POST",
     credentials: "include",
+    body: JSON.stringify(newAsset),
     headers: {
       "Accept-Language": Setting.getAcceptLanguage(),
     },
   }).then(res => res.json());
 }
 
-export function updateFile(owner, name, file) {
-  const newFile = Setting.deepCopy(file);
-  return fetch(`${Setting.ServerUrl}/api/update-file?id=${owner}/${encodeURIComponent(name)}`, {
+export function addAsset(asset) {
+  const newAsset = Setting.deepCopy(asset);
+  return fetch(`${Setting.ServerUrl}/api/add-asset`, {
     method: "POST",
     credentials: "include",
+    body: JSON.stringify(newAsset),
     headers: {
       "Accept-Language": Setting.getAcceptLanguage(),
     },
-    body: JSON.stringify(newFile),
   }).then(res => res.json());
 }
 
-export function addFile(file) {
-  const newFile = Setting.deepCopy(file);
-  return fetch(`${Setting.ServerUrl}/api/add-file`, {
+export function deleteAsset(asset) {
+  const newAsset = Setting.deepCopy(asset);
+  return fetch(`${Setting.ServerUrl}/api/delete-asset`, {
     method: "POST",
     credentials: "include",
+    body: JSON.stringify(newAsset),
     headers: {
       "Accept-Language": Setting.getAcceptLanguage(),
     },
-    body: JSON.stringify(newFile),
   }).then(res => res.json());
 }
 
-export function deleteFile(file) {
-  const newFile = Setting.deepCopy(file);
-  return fetch(`${Setting.ServerUrl}/api/delete-file`, {
+export function scanAssets(owner, provider) {
+  return fetch(`${Setting.ServerUrl}/api/scan-assets?owner=${owner}&provider=${provider}`, {
     method: "POST",
     credentials: "include",
     headers: {
       "Accept-Language": Setting.getAcceptLanguage(),
     },
-    body: JSON.stringify(newFile),
   }).then(res => res.json());
 }

@@ -46,13 +46,13 @@ func getTextFromPdf(path string) (string, error) {
 	if err != nil {
 		err = api.OptimizeFile(path, path, nil)
 		if err != nil {
-			return "", err
+			return "", nil//err
 		}
 	}
 
 	f, r, err := pdf.Open(path)
 	if err != nil {
-		return "", err
+		return "", nil//err
 	}
 	defer f.Close()
 
@@ -69,7 +69,7 @@ func getTextFromPdf(path string) (string, error) {
 		var texts []pdf.Text
 		texts, err = getPageTexts(p)
 		if err != nil {
-			return "", err
+			return "", nil//err
 		}
 		defer f.Close()
 

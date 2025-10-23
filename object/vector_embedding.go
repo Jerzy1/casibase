@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"log"
 
 	"github.com/beego/beego/logs"
 	"github.com/casibase/casibase/embedding"
@@ -31,6 +32,24 @@ import (
 	"github.com/casibase/casibase/util"
 	"github.com/cenkalti/backoff/v4"
 )
+
+// Max length constant
+const maxLen = 100
+// TruncateString shortens a string to maxLen characters (logging if truncated)
+func TruncateString(name, value string) string {
+	if len(value) > maxLen {
+		log.Printf("[WARN] Field %s too long (%d chars) — truncated to %d chars", name, len(value), maxLen)
+		return value[:maxLen]
+	}
+	return value
+}
+// CheckAndTruncateVectorFields ensures key Vector fields are ≤ maxLen
+func CheckAndTruncateVectorFields(v *Vector) {
+	v.Owner = TruncateString("Owner", v.Owner)
+	v.Name = TruncateString("Name", v.Name)
+	v.Store = TruncateString("Store", v.Store)
+	v.Provider = TruncateString("Provider", v.Provider)
+}
 
 func filterTextFiles(files []*storage.Object) []*storage.Object {
 	fileTypes := txt.GetSupportedFileTypes()
@@ -100,12 +119,13 @@ func addEmbeddedVector(embeddingProviderObj embedding.EmbeddingProvider, text st
 		Data:        data,
 		Dimension:   len(data),
 	}
+	CheckAndTruncateVectorFields(vector)
 	return AddVector(vector)
 }
 
 func addVectorsForStore(storageProviderObj storage.StorageProvider, embeddingProviderObj embedding.EmbeddingProvider, prefix string, storeName string, splitProviderName string, embeddingProviderName string, modelSubType string, lang string) (bool, error) {
 	var affected bool
-
+	affected = false
 	files, err := storageProviderObj.ListObjects(prefix)
 	if err != nil {
 		return false, err
@@ -115,10 +135,13 @@ func addVectorsForStore(storageProviderObj storage.StorageProvider, embeddingPro
 
 	for _, file := range files {
 		var text string
+		logs.Info("addVectorsForStore: File: %v",file.Url)
 		fileExt := filepath.Ext(file.Key)
 		text, err = txt.GetParsedTextFromUrl(file.Url, fileExt, lang)
 		if err != nil {
-			return false, err
+			logs.Error("Failed to addVectorsForStore1: %v\nFile: %v\n", err,file.Url)
+			continue
+			//return false, err
 		}
 
 		splitProviderType := splitProviderName
@@ -136,20 +159,26 @@ func addVectorsForStore(storageProviderObj storage.StorageProvider, embeddingPro
 		var splitProvider split.SplitProvider
 		splitProvider, err = split.GetSplitProvider(splitProviderType)
 		if err != nil {
-			return false, err
+			logs.Error("Failed to addVectorsForStore2: %v\nFile: %v\n", err,file.Url)
+			continue
+			//return false, err
 		}
 
 		var textSections []string
 		textSections, err = splitProvider.SplitText(text)
 		if err != nil {
-			return false, err
+			logs.Error("Failed to addVectorsForStore3: %v\nFile: %v\n", err,file.Url)
+			continue
+			//return false, err
 		}
 
 		for i, textSection := range textSections {
 			var vector *Vector
 			vector, err = getVectorByIndex("admin", storeName, file.Key, i)
 			if err != nil {
-				return false, err
+				logs.Error("Failed to getVectorByIndex: %v\n", err)
+				continue
+				//return false, err
 			}
 
 			if vector != nil {
@@ -172,12 +201,13 @@ func addVectorsForStore(storageProviderObj storage.StorageProvider, embeddingPro
 			err = backoff.Retry(operation, backoff.NewExponentialBackOff())
 			if err != nil {
 				logs.Error("Failed to generate embedding after retries: %v\n", err)
-				return false, err
+				continue
+				//return false, err
 			}
 		}
 	}
-
-	return affected, err
+	logs.Info("addVectorsForStore DONE")
+	return affected, nil
 }
 
 func getRelatedVectors(relatedStores []string, provider string) ([]*Vector, error) {

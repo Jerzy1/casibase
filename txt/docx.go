@@ -17,20 +17,23 @@ package txt
 import (
 	"fmt"
 	"strings"
-
+	"log"
 	"github.com/carmel/gooxml/document"
 	"github.com/casibase/casibase/i18n"
 )
 
 func GetTextFromDocx(path string, lang string) (string, error) {
 	if markitdownExists {
+		log.Println("[INFO] Using Markitdown for DOCX parsing")
 		return GetTextFromMarkitdown(path, lang)
 	}
 
 	docx, err := document.Open(path)
 	if err != nil {
+		log.Printf("[ERROR] Failed to open DOCX: %v", err)
 		return "", err
 	}
+	log.Printf("[INFO] Successfully opened DOCX file: %s", path)
 
 	paragraphs := []string{}
 	for _, para := range docx.Paragraphs() {
